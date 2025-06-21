@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/jordanpartridge/godo/internal/model"
 )
@@ -15,17 +16,25 @@ func NewTaskRepository(db *sql.DB) *TaskRepository {
 }
 
 func (r *TaskRepository) Create(title, description string) (*model.Task, error) {
-	query := `INSERT INTO tasks (title, description) VALUES (?, ?) RETURNING id, created_at, updated_at`
+	query := `INSERT INTO tasks (title, description) VALUES (?, ?)`
+
+	result, err := r.db.Exec(query, title, description)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
 
 	task := &model.Task{
+		ID:          int(id),
 		Title:       title,
 		Description: description,
 		Completed:   false,
-	}
-
-	err := r.db.QueryRow(query, title, description).Scan(&task.ID, &task.CreatedAt, &task.UpdatedAt)
-	if err != nil {
-		return nil, err
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	return task, nil
